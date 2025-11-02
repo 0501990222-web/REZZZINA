@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <title>Резина по дням</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <!-- важно для iPhone -->
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="Резина" />
+
+  <!-- PWA-манифест -->
+  <link rel="manifest" href="manifest.json" />
+
+  <!-- иконка для iPhone (потом можно заменить) -->
+  <link rel="apple-touch-icon" href="icons/icon-192.png" />
+
+  <style>
+    :root {
+      --blue: #1f5fff;
+      --teal: #2fd0c2;
+      --bg: #f3f8fb;
+      --white: #ffffff;
+      --dark: #123048;
+      --muted: #6c7380;
+    }
+    * { box-sizing: border-box; font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    body {
+      margin: 0;
+      background: radial-gradient(circle at top, rgba(31,95,255,0.08), rgba(47,208,194,0.04)), #f3f8fb;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      padding: 20px;
+      color: var(--dark);
+    }
+    .app {
+      width: min(1180px, 100%);
+      display: grid;
+      grid-template-columns: 1.05fr 0.95fr;
+      gap: 16px;
+    }
+    @media (max-width: 950px) { .app { grid-template-columns: 1fr; } }
+    .panel {
+      background: var(--white);
+      border-radius: 18px;
+      box-shadow: 0 14px 30px rgba(0,0,0,0.05);
+      padding: 14px 14px 10px;
+    }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+    h1 { font-size: 1rem; margin: 0; display: flex; gap: 6px; align-items: center; }
+    .badge {
+      background: rgba(31,95,255,0.12);
+      color: var(--blue);
+      padding: 2px 8px 4px;
+      border-radius: 999px;
+      font-size: .62rem;
+      font-weight: 600;
+    }
+    .year-select {
+      border: 1px solid rgba(0,0,0,0.05);
+      background: #fff;
+      border-radius: 999px;
+      padding: 4px 12px 4px;
+      font-size: 0.8rem;
+      color: var(--dark);
+    }
+    .months {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    .month-card {
+      background: #edf3ff;
+      border-radius: 14px;
+      padding: 7px 10px 9px;
+      cursor: pointer;
+      border: 1px solid transparent;
+      transition: .15s;
+    }
+    .month-card.active {
+      background: #fff;
+      border-color: rgba(31,95,255,0.5);
+      box-shadow: 0 8px 20px rgba(31,95,255,0.1);
+    }
+    .month-name { font-weight: 600; font-size: 0.78rem; }
+    .month-line { display: flex; justify-content: space-between; font-size: 0.6rem; margin-top: 2px; color: rgba(18,48,72,.6); }
+    .input-block {
+      background: radial-gradient(circle, rgba(47,208,194,0.12), rgba(255,255,255,0.6));
+      border: 1px solid rgba(47,208,194,0.35);
+      border-radius: 14px;
+      padding: 10px 10px 8px;
+      margin-bottom: 10px;
+    }
+    label { font-size: 0.62rem; color: rgba(18,48,72,.7); display: block; margin-bottom: 3px; }
+    .row { display: flex; gap: 8px; margin-bottom: 6px; }
+    input[type="date"], input[type="number"], input[type="text"] {
+      width: 100%;
+      padding: 5px 7px 6px;
+      border: 1px solid rgba(18,48,72,.08);
+      border-radius: 10px;
+      font-size: 0.78rem;
+      background: #fff;
+      color: var(--dark);
+    }
+    .btn {
+      background: linear-gradient(135deg, var(--blue), #00bcd4);
+      color: #fff;
+      border: none;
+      border-radius: 999px;
+      padding: 5px 14px 6px;
+      font-size: 0.75rem;
+      cursor: pointer;
+      font-weight: 600;
+      display: inline-flex;
+      gap: 4px;
+      align-items: center;
+    }
+    .list { max-height: 220px; overflow-y: auto; }
+    .day-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      background: #fff;
+      border-radius: 10px;
+      margin-bottom: 4px;
+      border: 1px solid rgba(18,48,72,.03);
+      padding: 5px 8px 5px;
+      align-items: center;
+    }
+    .day-left { display: flex; flex-direction: column; gap: 1px; }
+    .day-date { font-size: 0.72rem; font-weight: 500; }
+    .day-note { font-size: 0.6rem; color: rgba(18,48,72,.5); }
+    .kg { font-weight: 700; font-size: 0.8rem; color: var(--blue); }
+    .del { background: none; border: none; color: #ff4380; cursor: pointer; font-size: 0.8rem; }
+    .weekend { background: rgba(255,160,160,0.12); border: 1px solid rgba(255,99,132,0.12); }
+    .summary-card {
+      background: linear-gradient(150deg, #fff, #e5f6f3);
+      border-radius: 14px;
+      padding: 10px 12px;
+      margin-bottom: 10px;
+      border: 1px solid rgba(47,208,194,0.35);
+    }
+    .summary-title { font-size: 0.66rem; color: rgba(18,48,72,.6); margin-bottom: 3px; }
+    .summary-value { font-size: 1.35rem; font-weight: 700; color: #0e3858; }
+    .small-table { width: 100%; border-collapse: collapse; }
+    .small-table th, .small-table td { font-size: 0.62rem; padding: 3px 0; text-align: left; }
+    .text-right { text-align: right; }
+    .hint { font-size: 0.6rem; color: rgba(18,48,72,.5); }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="panel">
+      <div class="header">
+        <h1>Резина по дням</h1>
+        <select id="yearSelect" class="year-select">
+          <option value="2025">2025</option>
+          <option value="2026">2026</option>
+        </select>
+      </div>
+      <div class="months" id="monthsContainer"></div>
+
+      <div class="input-block">
+        <div id="currentMonthTitle" style="font-weight:600; margin-bottom:6px;">Январь 2025</div>
+        <div class="row">
+          <div style="flex:0.8;">
+            <label>Дата</label>
+            <input type="date" id="dayDate" />
+          </div>
+          <div style="flex:0.6;">
+            <label>Кг</label>
+            <input type="number" id="dayKg" min="0" step="0.1" placeholder="0" />
+          </div>
+          <div style="align-self:flex-end;">
+            <button class="btn" id="addDayBtn">Добавить</button>
+          </div>
+        </div>
+        <div class="row" style="margin-bottom: 4px;">
+          <div style="flex:1;">
+            <label>Комментарий (опц.)</label>
+            <input type="text" id="dayNote" placeholder="какой заказ / станок" />
+          </div>
+        </div>
+        <div class="hint">Если выбрана суббота/воскресенье — строка подсветится, но сохранить можно.</div>
+      </div>
+
+      <div class="list" id="daysList"></div>
+    </div>
+
+    <div class="panel">
+      <div class="summary-card">
+        <div class="summary-title">Общий вес за год</div>
+        <div class="summary-value" id="yearTotal">0 кг</div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-title">Всего за месяц</div>
+        <div class="summary-value" id="monthTotal">0 кг</div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-title">Среднее по будним</div>
+        <div class="summary-value" id="monthAvg">0 кг/день</div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-title">По месяцам</div>
+        <table class="small-table" id="monthTable">
+          <thead>
+            <tr><th>Месяц</th><th class="text-right">Кг</th></tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <p class="hint">Добавляй каждый рабочий день — всё само посчитается.</p>
+    </div>
+  </div>
+
+  <script>
+    const MONTHS = ["Январь","Февраль","Март","Апрель","Май","Июнь","Июль","Август","Сентябрь","Октябрь","Ноябрь","Декабрь"];
+    const LS_KEY = "rubberDaily_v1";
+
+    const yearSelect = document.getElementById("yearSelect");
+    const monthsContainer = document.getElementById("monthsContainer");
+    const currentMonthTitle = document.getElementById("currentMonthTitle");
+    const dayDate = document.getElementById("dayDate");
+    const dayKg = document.getElementById("dayKg");
+    const dayNote = document.getElementById("dayNote");
+    const addDayBtn = document.getElementById("addDayBtn");
+    const daysList = document.getElementById("daysList");
+    const yearTotalEl = document.getElementById("yearTotal");
+    const monthTotalEl = document.getElementById("monthTotal");
+    const monthAvgEl = document.getElementById("monthAvg");
+    const monthTableBody = document.querySelector("#monthTable tbody");
+
+    function getData() {
+      const raw = localStorage.getItem(LS_KEY);
+      if (!raw) return {};
+      try { return JSON.parse(raw); } catch { return {}; }
+    }
+    function setData(data) {
+      localStorage.setItem(LS_KEY, JSON.stringify(data));
+    }
+
+    let selectedYear = 2025;
+    let selectedMonth = 0;
+
+    function renderMonths() {
+      monthsContainer.innerHTML = "";
+      const data = getData();
+      for (let i = 0; i < 12; i++) {
+        const card = document.createElement("div");
+        card.className = "month-card" + (i === selectedMonth ? " active" : "");
+        const monthEntries = (data[selectedYear] && data[selectedYear][i]) || [];
+        const totalKg = monthEntries.reduce((s,e)=>s+e.kg,0);
+        const name = document.createElement("div");
+        name.className = "month-name";
+        name.textContent = MONTHS[i];
+        const line = document.createElement("div");
+        line.className = "month-line";
+        line.innerHTML = `<span>вес:</span><span>${totalKg.toFixed(1)} кг</span>`;
+        card.appendChild(name);
+        card.appendChild(line);
+        card.addEventListener("click", () => {
+          selectedMonth = i;
+          renderMonths();
+          updateCurrentMonthTitle();
+          renderDaysList();
+        });
+        monthsContainer.appendChild(card);
+      }
+    }
+
+    function updateCurrentMonthTitle() {
+      currentMonthTitle.textContent = MONTHS[selectedMonth] + " " + selectedYear;
+      const today = new Date();
+      const d = new Date(selectedYear, selectedMonth, Math.min(today.getDate(), 28));
+      dayDate.value = d.toISOString().split("T")[0];
+    }
+
+    function renderDaysList() {
+      daysList.innerHTML = "";
+      const data = getData();
+      const monthEntries = (data[selectedYear] && data[selectedYear][selectedMonth]) || [];
+      monthEntries.sort((a,b)=> a.date.localeCompare(b.date));
+      monthEntries.forEach(entry => {
+        const row = document.createElement("div");
+        let isWeekend = false;
+        if (entry.date) {
+          const dt = new Date(entry.date + "T00:00:00");
+          const d = dt.getDay();
+          if (d === 0 || d === 6) isWeekend = true;
+        }
+        row.className = "day-row" + (isWeekend ? " weekend" : "");
+        const left = document.createElement("div");
+        left.className = "day-left";
+        const dateStr = entry.date ? entry.date.split("-").reverse().join(".") : "—";
+        left.innerHTML = `<div class="day-date">${dateStr}</div>` + (entry.note ? `<div class="day-note">${entry.note}</div>` : "");
+        const right = document.createElement("div");
+        right.style.display = "flex";
+        right.style.alignItems = "center";
+        right.style.gap = "6px";
+        const kg = document.createElement("div");
+        kg.className = "kg";
+        kg.textContent = entry.kg.toFixed(1) + " кг";
+        const del = document.createElement("button");
+        del.className = "del";
+        del.textContent = "×";
+        del.addEventListener("click", () => deleteEntry(entry.id));
+        right.appendChild(kg);
+        right.appendChild(del);
+        row.appendChild(left);
+        row.appendChild(right);
+        daysList.appendChild(row);
+      });
+      renderSummary();
+    }
+
+    function addEntry() {
+      const dateVal = dayDate.value;
+      const kgVal = parseFloat(dayKg.value) || 0;
+      const noteVal = dayNote.value.trim();
+      if (!dateVal || !kgVal) return;
+      const data = getData();
+      if (!data[selectedYear]) data[selectedYear] = {};
+      if (!data[selectedYear][selectedMonth]) data[selectedYear][selectedMonth] = [];
+      data[selectedYear][selectedMonth].push({
+        id: Date.now(),
+        date: dateVal,
+        kg: kgVal,
+        note: noteVal
+      });
+      setData(data);
+      dayKg.value = "";
+      dayNote.value = "";
+      renderMonths();
+      renderDaysList();
+    }
+
+    function deleteEntry(id) {
+      const data = getData();
+      if (!data[selectedYear] || !data[selectedYear][selectedMonth]) return;
+      data[selectedYear][selectedMonth] = data[selectedYear][selectedMonth].filter(e => e.id !== id);
+      setData(data);
+      renderMonths();
+      renderDaysList();
+    }
+
+    function renderSummary() {
+      const data = getData();
+      const yearData = data[selectedYear] || {};
+      let yearTotal = 0;
+      monthTableBody.innerHTML = "";
+      for (let i = 0; i < 12; i++) {
+        const entries = yearData[i] || [];
+        const mTotal = entries.reduce((s,e)=>s+e.kg,0);
+        yearTotal += mTotal;
+        const tr = document.createElement("tr");
+        const td1 = document.createElement("td");
+        td1.textContent = MONTHS[i];
+        const td2 = document.createElement("td");
+        td2.className = "text-right";
+        td2.textContent = mTotal.toFixed(1) + " кг";
+        tr.appendChild(td1); tr.appendChild(td2);
+        monthTableBody.appendChild(tr);
+      }
+      yearTotalEl.textContent = yearTotal.toFixed(1) + " кг";
+
+      const monthEntries = yearData[selectedMonth] || [];
+      const mTotal = monthEntries.reduce((s,e)=>s+e.kg,0);
+      monthTotalEl.textContent = mTotal.toFixed(1) + " кг";
+
+      const workEntries = monthEntries.filter(e => {
+        if (!e.date) return false;
+        const d = new Date(e.date + "T00:00:00").getDay();
+        return d !== 0 && d !== 6;
+      });
+      const avg = workEntries.length ? mTotal / workEntries.length : 0;
+      monthAvgEl.textContent = avg.toFixed(1) + " кг/день";
+    }
+
+    yearSelect.addEventListener("change", () => {
+      selectedYear = parseInt(yearSelect.value, 10);
+      selectedMonth = 0;
+      renderMonths();
+      updateCurrentMonthTitle();
+      renderDaysList();
+    });
+    addDayBtn.addEventListener("click", addEntry);
+    dayKg.addEventListener("keypress", e => { if (e.key === "Enter") addEntry(); });
+
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("sw.js");
+    }
+
+    renderMonths();
+    updateCurrentMonthTitle();
+    renderDaysList();
+  </script>
+</body>
+</html>
